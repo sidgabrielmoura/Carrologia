@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum FuelType {
+  GASOLINE
+  ETHANOL
+  DIESEL
+  ELECTRIC
+  HYBRID
+}
+
+enum TransmissionType {
+  MANUAL
+  AUTOMATIC
+  CVT
+  SEMI_AUTOMATIC
+}
+
+model User {
+  id          String   @id @default(uuid())
+  name        String   @default("")
+  email       String   @unique
+  password    String   
+  avatarUrl   String?  
+  role        UserRole @default(USER)
+
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+model Cars {
+  id              String            @id @default(uuid())
+  name            String            @unique
+  brand           String            @default("")
+  model           String            @default("")
+  fipe            Float             @default(0)
+  year            Int               @default(0)
+  imageUrl        String?      
+  videoUrl        String?                 
+  description     String?                       
+
+  specifications  Specifications?
+  features        Features?
+
+  created_at      DateTime          @default(now())
+  updated_at      DateTime          @updatedAt
+}
+
+model Specifications {
+  id             String             @id @default(uuid())  
+  fuel           FuelType           @default(GASOLINE)
+  engine         String             @default("")      
+  power          String             @default("")      
+  torque         String?                          
+  consumption    String             @default("")      
+  transmission   TransmissionType   @default(MANUAL) 
+  traction       String?                         
+  seats          Int?                            
+  doors          Int?                            
+  trunkCapacity  String?                         
+  weight         String?                         
+  maxSpeed       String?                         
+  acceleration   String?                         
+
+  carId          String             @unique
+  car            Cars               @relation(fields: [carId], references: [id])
+
+  created_at     DateTime           @default(now())
+  updated_at     DateTime           @updatedAt
+}
+
+model Features {
+  id              String   @id @default(uuid())
+  carId           String   @unique
+  car             Cars     @relation(fields: [carId], references: [id])
+
+  airBag          Boolean  @default(false)
+  absBrakes       Boolean  @default(false)
+  electricWindows Boolean @default(false)
+  airConditioning Boolean @default(false)
+  alarm           Boolean  @default(false)
+  centralLocking  Boolean  @default(false)
+  powerSteering   Boolean  @default(false)
+  rearCamera      Boolean  @default(false)
+  bluetooth       Boolean  @default(false)
+  usbPort         Boolean  @default(false)
+  gps             Boolean  @default(false)
+  alloyWheels     Boolean  @default(false)
+  fogLights       Boolean  @default(false)
+  sunroof         Boolean  @default(false)
+
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+}
