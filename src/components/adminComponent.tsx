@@ -62,6 +62,7 @@ export default function AdminComponent() {
         imageUrl: "",
         videoUrl: "",
         description: "",
+        popular: false,
         specifications: {
             fuel: "GASOLINE",
             engine: "",
@@ -114,6 +115,7 @@ export default function AdminComponent() {
         imageUrl: z.string().min(1, 'URL da imagem é obrigatória'),
         videoUrl: z.string().min(1, 'URL do vídeo é obrigatória'),
         description: z.string().min(10, 'Descrição deve ter ao menos 10 caracteres'),
+        popular: z.boolean().optional(),
         specifications: z.object({
             fuel: z.string().min(1, 'Combustível é obrigatório'),
             engine: z.string().min(1, 'Motor é obrigatório'),
@@ -160,7 +162,6 @@ export default function AdminComponent() {
 
     const handleCarModalOpenChange = (open: boolean) => {
         if (!open) {
-            // fechado: se estava em edição, reset completo; se estava criando (editingCarId == null), manter o rascunho
             if (editingCarId) {
                 setEditingCarId(null)
                 reset(initialCarData as unknown as CarFormValues)
@@ -169,7 +170,6 @@ export default function AdminComponent() {
             return
         }
 
-        // abrindo: apenas abrir modal, não resetar (mantém rascunho se existia)
         setNewCarModal(true)
     }
 
@@ -186,6 +186,7 @@ export default function AdminComponent() {
                 imageUrl: data.imageUrl || "",
                 videoUrl: data.videoUrl || "",
                 description: data.description || "",
+                popular: data.popular,
                 specifications: {
                     ...(data.specifications || {}),
                 },
@@ -232,6 +233,7 @@ export default function AdminComponent() {
             imageUrl: car.imageUrl,
             videoUrl: car.videoUrl,
             description: car.description,
+            popular: car.popular,
             specifications: car.specifications,
             features: car.features,
         }
@@ -819,6 +821,23 @@ export default function AdminComponent() {
                                                 <TabsContent value="details" className="pt-6 flex flex-col gap-5">
                                                     <Controller
                                                         control={control}
+                                                        name="popular"
+                                                        render={({ field }) => (
+                                                            <div className="flex items-center gap-2">
+                                                                <Checkbox
+                                                                    className="bg-zinc-300"
+                                                                    checked={!!field.value}
+                                                                    onCheckedChange={(v) => field.onChange(!!v)}
+                                                                    onBlur={field.onBlur}
+                                                                    name={field.name}
+                                                                    ref={field.ref}
+                                                                    disabled={field.disabled}
+                                                                />
+                                                                <h1 className="font-semibold capitalize">carro popular</h1>
+                                                            </div>
+                                                        )} />
+                                                    <Controller
+                                                        control={control}
                                                         name="name"
                                                         render={({ field }) => (
                                                             <div>
@@ -1086,7 +1105,14 @@ export default function AdminComponent() {
                                                     alt={`${car.brand} ${car.name}`}
                                                     className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                                                 />
-                                                <Badge className="absolute top-3 right-3 bg-accent text-accent-foreground">{car.year}</Badge>
+
+                                                <div className="absolute top-3 right-3 flex items-center gap-1">
+                                                    <Badge className="bg-accent text-accent-foreground">{car.year}</Badge>
+
+                                                    {car.popular && (
+                                                        <Badge className="bg-sky-500 text-accent-foreground">Popular</Badge>
+                                                    )}
+                                                </div>
                                             </div>
 
                                             <div className="p-6">

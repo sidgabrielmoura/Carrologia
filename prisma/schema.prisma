@@ -47,15 +47,24 @@ model Cars {
   model           String            @default("")
   fipe            Float             @default(0)
   year            Int               @default(0)
+  popular         Boolean           @default(false)
   imageUrl        String?      
   videoUrl        String?                 
   description     String?                       
 
   specifications  Specifications?
   features        Features?
+  topCars         TopCars?
 
   created_at      DateTime          @default(now())
   updated_at      DateTime          @updatedAt
+}
+
+model TopCars {
+  id             String             @id @default(uuid())
+  order          Int?
+  carId          String             @unique
+  car            Cars               @relation(fields: [carId], references: [id])
 }
 
 model Specifications {
