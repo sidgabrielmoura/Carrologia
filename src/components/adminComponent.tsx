@@ -108,10 +108,17 @@ export default function AdminComponent() {
             if (typeof val === 'string') return val === '' ? NaN : Number(val)
             return val
         }, z.number().refine((v) => !isNaN(v) && v >= 0, { message: 'FIPE inválido' })),
-        year: z.preprocess((val) => {
-            if (typeof val === 'string') return val === '' ? NaN : Number(val)
-            return val
-        }, z.number().int().min(1900, 'Ano inválido').max(new Date().getFullYear(), 'Ano no futuro')),
+        year: z.preprocess(
+            (val) => {
+                if (typeof val === "string") return val === "" ? NaN : Number(val);
+                return val;
+            },
+            z
+                .number()
+                .int()
+                .min(1900, "Ano inválido")
+                .max(new Date().getFullYear() + 3, "Ano muito à frente do atual")
+        ),
         imageUrl: z.string().min(1, 'URL da imagem é obrigatória'),
         videoUrl: z.string().min(1, 'URL do vídeo é obrigatória'),
         description: z.string().min(10, 'Descrição deve ter ao menos 10 caracteres'),
