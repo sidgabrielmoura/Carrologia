@@ -7,6 +7,7 @@ import { useEffect } from "react";
 import { GetCars } from "./actions";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import RankedCars from "@/components/RankedCars";
 
 export default function Home() {
   const router = useRouter()
@@ -27,6 +28,7 @@ export default function Home() {
       <Navbar />
       <main>
         <HeroSection />
+        {/* <RankedCars /> */}
         <CarGrid />
       </main>
       <Footer />

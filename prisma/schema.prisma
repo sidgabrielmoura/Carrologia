@@ -8,6 +8,95 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model User {
+  id         String   @id @default(uuid())
+  name       String   @default("")
+  email      String   @unique
+  password   String
+  avatarUrl  String?
+  role       UserRole @default(USER)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
+
+model Cars {
+  id                        String          @id @default(uuid())
+  name                      String          @unique
+  brand                     String          @default("")
+  model                     String          @default("")
+  fipe                      Float           @default(0)
+  year                      Int             @default(0)
+  imageUrl                  String?
+  description               String?
+  created_at                DateTime        @default(now())
+  updated_at                DateTime        @updatedAt
+  videoUrl                  String?
+  popular                   Boolean         @default(false)
+  brandId   String?
+  brand_db     Brands?  @relation(fields: [brandId], references: [id])
+  features                  Features?
+  specifications            Specifications?
+  top_10                    TopCars?
+}
+
+model TopCars {
+  id    String @id @default(uuid())
+  order Int?
+  carId String @unique
+  car   Cars   @relation(fields: [carId], references: [id])
+}
+
+model Specifications {
+  id            String           @id @default(uuid())
+  fuel          FuelType         @default(GASOLINE)
+  engine        String           @default("")
+  power         String           @default("")
+  torque        String?
+  consumption   String           @default("")
+  transmission  TransmissionType @default(MANUAL)
+  traction      String?
+  seats         Int?
+  doors         Int?
+  trunkCapacity String?
+  weight        String?
+  maxSpeed      String?
+  acceleration  String?
+  carId         String           @unique
+  created_at    DateTime         @default(now())
+  updated_at    DateTime         @updatedAt
+  car           Cars             @relation(fields: [carId], references: [id])
+}
+
+model Features {
+  id              String   @id @default(uuid())
+  carId           String   @unique
+  airBag          Boolean  @default(false)
+  absBrakes       Boolean  @default(false)
+  electricWindows Boolean  @default(false)
+  airConditioning Boolean  @default(false)
+  alarm           Boolean  @default(false)
+  centralLocking  Boolean  @default(false)
+  powerSteering   Boolean  @default(false)
+  rearCamera      Boolean  @default(false)
+  bluetooth       Boolean  @default(false)
+  usbPort         Boolean  @default(false)
+  gps             Boolean  @default(false)
+  alloyWheels     Boolean  @default(false)
+  fogLights       Boolean  @default(false)
+  sunroof         Boolean  @default(false)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  car             Cars     @relation(fields: [carId], references: [id])
+}
+
+model Brands {
+  id                      String  @id @default(uuid())
+  name                    String? @unique
+  logo_img                String?
+
+  cars                    Cars[]
+}
+
 enum UserRole {
   ADMIN
   USER
@@ -26,90 +115,4 @@ enum TransmissionType {
   AUTOMATIC
   CVT
   SEMI_AUTOMATIC
-}
-
-model User {
-  id          String   @id @default(uuid())
-  name        String   @default("")
-  email       String   @unique
-  password    String   
-  avatarUrl   String?  
-  role        UserRole @default(USER)
-
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-}
-
-model Cars {
-  id              String            @id @default(uuid())
-  name            String            @unique
-  brand           String            @default("")
-  model           String            @default("")
-  fipe            Float             @default(0)
-  year            Int               @default(0)
-  popular         Boolean           @default(false)
-  imageUrl        String?      
-  videoUrl        String?                 
-  description     String?                       
-
-  specifications  Specifications?
-  features        Features?
-  topCars         TopCars?
-
-  created_at      DateTime          @default(now())
-  updated_at      DateTime          @updatedAt
-}
-
-model TopCars {
-  id             String             @id @default(uuid())
-  order          Int?
-  carId          String             @unique
-  car            Cars               @relation(fields: [carId], references: [id])
-}
-
-model Specifications {
-  id             String             @id @default(uuid())  
-  fuel           FuelType           @default(GASOLINE)
-  engine         String             @default("")      
-  power          String             @default("")      
-  torque         String?                          
-  consumption    String             @default("")      
-  transmission   TransmissionType   @default(MANUAL) 
-  traction       String?                         
-  seats          Int?                            
-  doors          Int?                            
-  trunkCapacity  String?                         
-  weight         String?                         
-  maxSpeed       String?                         
-  acceleration   String?                         
-
-  carId          String             @unique
-  car            Cars               @relation(fields: [carId], references: [id])
-
-  created_at     DateTime           @default(now())
-  updated_at     DateTime           @updatedAt
-}
-
-model Features {
-  id              String   @id @default(uuid())
-  carId           String   @unique
-  car             Cars     @relation(fields: [carId], references: [id])
-
-  airBag          Boolean  @default(false)
-  absBrakes       Boolean  @default(false)
-  electricWindows Boolean @default(false)
-  airConditioning Boolean @default(false)
-  alarm           Boolean  @default(false)
-  centralLocking  Boolean  @default(false)
-  powerSteering   Boolean  @default(false)
-  rearCamera      Boolean  @default(false)
-  bluetooth       Boolean  @default(false)
-  usbPort         Boolean  @default(false)
-  gps             Boolean  @default(false)
-  alloyWheels     Boolean  @default(false)
-  fogLights       Boolean  @default(false)
-  sunroof         Boolean  @default(false)
-
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
 }

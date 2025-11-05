@@ -58,13 +58,18 @@ export function CarModal({ car, onClose, open }: CarDialogProps) {
                 className="w-full h-64 object-cover rounded-lg border border-border"
               />
               <div className="flex items-center justify-between">
-                <Badge variant="secondary" className="text-sm uppercase">
-                  {car.specifications?.fuel === 'ELECTRIC' ? 'Eletricidade'
+                <div className="flex items-center gap-2">
+                  <Badge variant="secondary" className="text-sm uppercase">
+                    {car.specifications?.fuel === 'ELECTRIC' ? 'Eletricidade'
                       : car.specifications?.fuel === 'DIESEL' ? 'Diesel'
                         : car.specifications?.fuel === 'GASOLINE' ? 'Gasolina'
                           : car.specifications?.fuel === 'ETHANOL' ? 'Etanol'
                             : 'Híbrido'}
-                </Badge>
+                  </Badge>
+                  {car.popular && (
+                    <Badge className="bg-sky-700 text-zinc-50 text-sm uppercase">Popular</Badge>
+                  )}
+                </div>
                 <span className="text-2xl font-bold text-accent">
                   R$ {car.fipe.toFixed(3)}
                 </span>

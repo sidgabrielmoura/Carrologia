@@ -1,5 +1,5 @@
 "use client"
-import { ArrowRight, Car, CarFront, MoreHorizontal, Plus, Trash, User2 } from "lucide-react";
+import { ArrowRight, Car, CarFront, Code2, KeySquare, MoreHorizontal, Plus, Trash, User, User2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { createCar, deleteCar, updateCar, DeleteUser, EditUser, GetAllUsers, GetCars, Register } from "@/app/actions";
+import { createCar, deleteCar, updateCar, DeleteUser, EditUser, GetAllUsers, GetCars, Register, getBrands } from "@/app/actions";
 import { toast } from "sonner";
 import { useSnapshot } from "valtio";
 import { useUser } from "@/stores/user";
@@ -24,12 +24,17 @@ import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { useBrandsStore } from "@/stores/brands";
 
 export default function AdminComponent() {
     const [loading, setLoading] = useState(false)
     const [newUserModal, setNewUserModal] = useState(false)
     const users = useSnapshot(useUser.all_users)
+    const brands = useSnapshot(useBrandsStore.brands)
     const cars = useSnapshot(useCarsStore)
+    const [json_mode, setJson_mode] = useState(false)
+    const [jsonValue, setJsonValue] = useState<string>("");
     const [userData, setUserData] = useState({
         name: '',
         email: '',
@@ -63,6 +68,7 @@ export default function AdminComponent() {
         videoUrl: "",
         description: "",
         popular: false,
+        brandModel: "",
         specifications: {
             fuel: "GASOLINE",
             engine: "",
@@ -123,6 +129,7 @@ export default function AdminComponent() {
         videoUrl: z.string().min(1, 'URL do vídeo é obrigatória'),
         description: z.string().min(10, 'Descrição deve ter ao menos 10 caracteres'),
         popular: z.boolean().optional(),
+        brandId: z.string().min(1, 'a marca é obrigatória'),
         specifications: z.object({
             fuel: z.string().min(1, 'Combustível é obrigatório'),
             engine: z.string().min(1, 'Motor é obrigatório'),
@@ -183,7 +190,6 @@ export default function AdminComponent() {
     const onSubmit = async (data: CarFormValues) => {
         setLoading(true)
         try {
-
             const newCarPayload = {
                 name: data.name,
                 brand: data.brand,
@@ -194,6 +200,7 @@ export default function AdminComponent() {
                 videoUrl: data.videoUrl || "",
                 description: data.description || "",
                 popular: data.popular,
+                brandId: data.brandId,
                 specifications: {
                     ...(data.specifications || {}),
                 },
@@ -352,6 +359,18 @@ export default function AdminComponent() {
         }
     }
 
+    const fetchBrands = async () => {
+        setLoadingPage(true)
+        try {
+            await getBrands()
+        } catch (error) {
+            console.log(error)
+            toast.error("Erro ao buscar carros")
+        } finally {
+            setLoadingPage(false)
+        }
+    }
+
     useEffect(() => {
         if (loadingPage) return;
 
@@ -361,6 +380,7 @@ export default function AdminComponent() {
 
                 const tasks: Promise<any>[] = []
                 if (users.length === 0 && !hasFetchedUsers) tasks.push(fetchUsers())
+                if (brands.length === 0) tasks.push(fetchBrands())
                 if ((cars?.cars?.length || 0) === 0 && !hasFetchedCars) tasks.push(fetchCars())
 
                 if (tasks.length > 0) await Promise.all(tasks)
@@ -504,7 +524,7 @@ export default function AdminComponent() {
                 </div>
             ) : (
                 <main className="w-full h-screen bg-zinc-200 flex">
-                    <section className="min-w-[250px] bg-zinc-300 backdrop-blur-md flex-1 flex flex-col gap-3 p-4">
+                    <section className="min-w-[250px] max-md:hidden bg-zinc-300 backdrop-blur-md flex-1 flex flex-col gap-3 p-4">
                         <Link href={'/'} className="font-black text-2xl text-center">
                             <h1 className="text-amber-600 flex justify-center gap-2 items-center"><Car /> Carrologia</h1>
                             <h1>Administrador</h1>
@@ -517,24 +537,48 @@ export default function AdminComponent() {
                             <CarFront />
                             Carros
                         </Button>
+                        <Button onClick={() => handleTabChange('brand')} variant={activeTab === 'brand' ? 'default' : 'ghost'} className="w-full cursor-pointer border-zinc-400/40 border">
+                            <KeySquare />
+                            Marcas
+                        </Button>
                     </section>
 
+                    <div className="fixed top-3 left-5 z-30 md:hidden">
+                        <Popover>
+                            <PopoverTrigger asChild>
+                                <div className="text-amber-600 bg-zinc-300 p-2 rounded-full cursor-pointer">{activeTab === 'users' ? <User className="size-7" /> : <Car className="size-8" />}</div>
+                            </PopoverTrigger>
+                            <PopoverContent className="max-w-80 w-60 ml-4 mt-2 bg-zinc-300/80 backdrop-blur-sm">
+                                <div className="flex flex-col gap-2">
+                                    <Button onClick={() => handleTabChange('users')} variant={activeTab === 'users' ? 'default' : 'ghost'} className="w-full cursor-pointer border-zinc-400/40 border">
+                                        <User2 />
+                                        Usuários
+                                    </Button>
+                                    <Button onClick={() => handleTabChange('cars')} variant={activeTab === 'cars' ? 'default' : 'ghost'} className="w-full cursor-pointer border-zinc-400/40 border">
+                                        <CarFront />
+                                        Carros
+                                    </Button>
+                                </div>
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+
                     {activeTab === 'users' ? (
-                        <section className="w-full h-full px-10">
-                            <div className="h-20 flex items-center justify-between">
+                        <section className="w-full h-full px-3">
+                            <div className="h-18 flex items-center justify-between gap-2 sticky top-0 z-20 bg-zinc-200/80 backdrop-blur-sm">
                                 <div className="w-[100px]" />
                                 <Input
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     placeholder="Pesquisar usuários"
-                                    className="w-1/2 text-zinc-700 bg-zinc-50 shadow-md hover:shadow-lg"
+                                    className="w-full max-w-160 text-zinc-700 bg-zinc-50 shadow-md hover:shadow-lg"
                                 />
 
                                 <Dialog open={newUserModal} onOpenChange={setNewUserModal}>
                                     <DialogTrigger asChild>
                                         <Button className="cursor-pointer">
-                                            <Plus className="mr-2 h-4 w-4" />
-                                            Criar Novo
+                                            <Plus className="md:mr-2 h-4 w-4" />
+                                            <h1 className="max-md:hidden">Criar Novo Usuário</h1>
                                         </Button>
                                     </DialogTrigger>
                                     <DialogContent className="sm:max-w-[425px]">
@@ -782,21 +826,21 @@ export default function AdminComponent() {
                                 ))}
                             </div>
                         </section>
-                    ) : (
-                        <section className="w-full px-10 h-[calc(100dvh-5px)] overflow-y-auto">
-                            <div className="h-20 flex items-center justify-between">
+                    ) : activeTab === 'cars' ? (
+                        <section className="w-full h-[calc(100dvh-5px)] overflow-y-auto">
+                            <div className="h-18 px-3 flex items-center justify-between gap-2 sticky top-0 z-20 bg-zinc-200/80 backdrop-blur-sm">
                                 <div className="w-[100px]" />
                                 <Input
                                     value={searchCars}
                                     onChange={(e) => setSearchCars(e.target.value)}
                                     placeholder="Pesquisar por carros"
-                                    className="w-1/2 text-zinc-700 bg-zinc-50 shadow-md hover:shadow-lg"
+                                    className="w-full max-w-160 text-zinc-700 bg-zinc-50 shadow-md hover:shadow-lg"
                                 />
 
                                 <Dialog open={newCarModal} onOpenChange={(open) => handleCarModalOpenChange(open)}>
                                     <Button className="cursor-pointer flex items-center gap-2" onClick={() => { setEditingCarId(null); setNewCarModal(true); }}>
                                         <Plus className="h-4 w-4" />
-                                        Criar Novo Carro
+                                        <h1 className="max-md:hidden">Criar Novo Carro</h1>
                                     </Button>
 
                                     <DialogContent className="!max-w-6xl w-full rounded-xl p-8 overflow-y-auto max-h-[95vh]">
@@ -860,13 +904,35 @@ export default function AdminComponent() {
                                                     />
 
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <Controller control={control} name="brandId" render={({ field }) => (
+                                                            <div>
+                                                                <label className="text-sm ml-2 text-muted-foreground">Marca *</label>
+                                                                <Select value={String(field.value ?? '')}
+                                                                    onValueChange={(v) => {
+                                                                        field.onChange(v)
+
+                                                                        const selectedBrand = brands.find((b) => b.id === v)
+
+                                                                        setValue("brand", selectedBrand?.name || '')
+                                                                    }}>
+                                                                    <SelectTrigger className="w-full bg-stone-200">Marca</SelectTrigger>
+                                                                    <SelectContent className="bg-stone-200">
+                                                                        {brands.map(brand => (
+                                                                            <SelectItem key={brand.id} value={brand.id}>{brand.name}</SelectItem>
+                                                                        ))}
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                {errors.brandId && <p className="text-destructive text-sm mt-1">{errors.brandId.message}</p>}
+                                                            </div>
+                                                        )} />
+
                                                         <Controller
                                                             control={control}
                                                             name="brand"
                                                             render={({ field }) => (
                                                                 <div>
-                                                                    <label className="text-sm ml-2 text-muted-foreground">Marca *</label>
-                                                                    <Input {...field} placeholder="Marca *" className="bg-stone-200/80" />
+                                                                    <label className="text-sm ml-2 text-muted-foreground">Nome da Marca *</label>
+                                                                    <Input readOnly {...field} placeholder="Marca *" className="bg-stone-200/80" />
                                                                     {errors.brand && <p className="text-destructive text-sm mt-1">{String(errors.brand?.message)}</p>}
                                                                 </div>
                                                             )}
@@ -1039,7 +1105,7 @@ export default function AdminComponent() {
                                                         <div className="flex gap-4 items-center">
                                                             <Controller control={control} name="specifications.trunkCapacity" render={({ field }) => (
                                                                 <div className="w-full mt-2">
-                                                                    <label className="text-sm ml-2 text-muted-foreground">Capacidade do porta-malas *</label>
+                                                                    <label className="text-sm ml-2 text-muted-foreground truncate">porta-malas *</label>
                                                                     <Input {...field} className="bg-stone-200" placeholder="Capacidade do porta-malas (Litros)" />
                                                                     {errors.specifications?.trunkCapacity && <p className="text-destructive text-sm mt-1">{errors.specifications?.trunkCapacity.message}</p>}
                                                                 </div>
@@ -1086,11 +1152,11 @@ export default function AdminComponent() {
                                                     </div>
                                                 </TabsContent>
                                             </Tabs>
-                                            <div className="flex items-center gap-3">
-                                                <Button type="submit" className="mt-6 w-fit py-2 text-sm cursor-pointer font-semibold" disabled={loading || isSubmitting}>
+                                            <div className="flex items-center gap-1">
+                                                <Button type="submit" className="w-fit py-2 text-sm cursor-pointer font-semibold" disabled={loading || isSubmitting}>
                                                     {loading || isSubmitting ? "Salvando..." : "Salvar Veículo"}
                                                 </Button>
-                                                <Button type="button" variant="ghost" className="mt-6" onClick={() => handleCarModalOpenChange(false)}>
+                                                <Button type="button" variant="ghost" onClick={() => handleCarModalOpenChange(false)}>
                                                     Cancelar
                                                 </Button>
                                             </div>
@@ -1127,21 +1193,21 @@ export default function AdminComponent() {
                                                     <h3 className="text-xl font-bold text-foreground truncate">
                                                         {car.brand} {car.name}
                                                     </h3>
-                                                    <span className="text-lg font-semibold text-accent">{car.fipe?.toFixed(3)}</span>
+                                                    <span className="text-lg font-semibold text-accent text-nowrap">R$ {car.fipe?.toFixed(3)}</span>
                                                 </div>
 
                                                 <div className="space-y-2 mb-4 text-sm text-muted-foreground">
-                                                    <div className="flex justify-between">
+                                                    <div className="flex justify-between gap-3">
                                                         <span>Motor:</span>
-                                                        <span className="font-medium text-foreground">{car.specifications?.engine}</span>
+                                                        <span className="font-medium text-foreground truncate">{car.specifications?.engine}</span>
                                                     </div>
-                                                    <div className="flex justify-between">
+                                                    <div className="flex justify-between gap-3">
                                                         <span>Potência:</span>
-                                                        <span className="font-medium text-foreground">{car.specifications?.power}</span>
+                                                        <span className="font-medium text-foreground truncate">{car.specifications?.power}</span>
                                                     </div>
-                                                    <div className="flex justify-between">
+                                                    <div className="flex justify-between gap-3">
                                                         <span>Consumo:</span>
-                                                        <span className="font-medium text-foreground">{car.specifications?.consumption}</span>
+                                                        <span className="font-medium text-foreground truncate">{car.specifications?.consumption}</span>
                                                     </div>
                                                 </div>
 
@@ -1211,6 +1277,188 @@ export default function AdminComponent() {
                                         </CardContent>
                                     </Card>
                                 )}
+                            </div>
+                        </section>
+                    ) : activeTab === 'brand' && (
+                        <section className="w-full h-full max-h-[calc(100dvh)] overflow-y-auto px-5">
+                            <div className="h-18 flex items-center justify-between gap-2 sticky top-0 z-20 bg-zinc-200/80 backdrop-blur-sm">
+                                <div className="w-[100px]" />
+                                <Input
+                                    value={search}
+
+                                    // onChange={(e) => setSearch(e.target.value)}
+
+                                    placeholder="Pesquisar marcas"
+                                    className="w-full max-w-160 text-zinc-700 bg-zinc-50 shadow-md hover:shadow-lg"
+                                />
+
+                                <Dialog open={newUserModal} onOpenChange={setNewUserModal}>
+                                    <DialogTrigger asChild>
+                                        {/* <Button className="cursor-pointer">
+                                            <Plus className="md:mr-2 h-4 w-4" />
+                                            <h1 className="max-md:hidden">Criar Nova marca</h1>
+                                        </Button> */}
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[425px]">
+                                        <DialogHeader>
+                                            <DialogTitle>Criar nova marca</DialogTitle>
+                                            <DialogDescription>
+                                                Preencha os dados abaixo para criar uma nova marca
+                                            </DialogDescription>
+                                        </DialogHeader>
+
+                                        <form action={handleRegister} className="space-y-4">
+                                            <div className="grid gap-4 py-4">
+                                                <Input
+                                                    value={userData.name}
+                                                    onChange={(e) => setUserData({ ...userData, name: e.target.value })}
+                                                    placeholder="Nome do usuário"
+                                                    type="text"
+                                                    required
+                                                    className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
+                                                />
+
+                                                <Input
+                                                    value={userData.email}
+                                                    onChange={(e) => setUserData({ ...userData, email: e.target.value })}
+                                                    placeholder="Email"
+                                                    type="email"
+                                                    required
+                                                    className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
+                                                />
+
+                                                <div>
+                                                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-2 block">
+                                                        Função
+                                                    </label>
+                                                    <div className="flex space-x-3">
+                                                        <Button
+                                                            type="button"
+                                                            variant={userData.role === 'USER' ? 'default' : 'outline'}
+                                                            onClick={() => setUserData({ ...userData, role: 'USER' })}
+                                                            className={`${userData.role === 'USER' ? "bg-orange-600 hover:bg-orange-700 text-white" : "border-zinc-300"} flex-1 cursor-pointer`}
+                                                        >
+                                                            Usuário
+                                                        </Button>
+
+                                                        <Button
+                                                            type="button"
+                                                            variant={userData.role === 'ADMIN' ? 'default' : 'outline'}
+                                                            onClick={() => setUserData({ ...userData, role: 'ADMIN' })}
+                                                            className={`${userData.role === 'ADMIN' ? "bg-orange-600 hover:bg-orange-700 text-white" : "border-zinc-300"} flex-1 cursor-pointer`}
+                                                        >
+                                                            Admin
+                                                        </Button>
+                                                    </div>
+                                                </div>
+
+                                                <Input
+                                                    value={userData.password}
+                                                    onChange={(e) => setUserData({ ...userData, password: e.target.value })}
+                                                    placeholder="Senha"
+                                                    type="password"
+                                                    required
+                                                    className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
+                                                />
+                                            </div>
+
+                                            <DialogFooter>
+                                                <Button
+                                                    disabled={loading}
+                                                    type="submit"
+                                                    className="w-full cursor-pointer bg-orange-600 hover:bg-orange-700 text-white"
+                                                >
+                                                    Criar
+                                                </Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
+
+                                <Dialog open={userEdit} onOpenChange={setUserEdit}>
+                                    <DialogContent className="sm:max-w-[425px]">
+                                        <DialogHeader>
+                                            <DialogTitle>Editar {userData.name}</DialogTitle>
+                                            <DialogDescription>
+                                                Atualize as informações de usuário ou defina uma nova senha.
+                                            </DialogDescription>
+                                        </DialogHeader>
+
+                                        <form action={handleEditUser} className="space-y-4">
+                                            <div className="grid gap-4 py-4">
+                                                <Input
+                                                    value={userData.name}
+                                                    onChange={(e) => setUserData({ ...userData, name: e.target.value })}
+                                                    placeholder="Nome do usuário"
+                                                    type="text"
+                                                    required
+                                                    className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
+                                                />
+
+                                                <Input
+                                                    value={userData.email}
+                                                    onChange={(e) => setUserData({ ...userData, email: e.target.value })}
+                                                    placeholder="Email"
+                                                    type="email"
+                                                    required
+                                                    className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
+                                                />
+
+                                                <div>
+                                                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-2 block">
+                                                        Função
+                                                    </label>
+                                                    <div className="flex space-x-3">
+                                                        <Button
+                                                            type="button"
+                                                            variant={userData.role === 'USER' ? 'default' : 'outline'}
+                                                            onClick={() => setUserData({ ...userData, role: 'USER' })}
+                                                            className={`${userData.role === 'USER' ? "bg-orange-600 hover:bg-orange-700 text-white" : "border-zinc-300"} flex-1 cursor-pointer`}
+                                                        >
+                                                            Usuário
+                                                        </Button>
+
+                                                        <Button
+                                                            type="button"
+                                                            variant={userData.role === 'ADMIN' ? 'default' : 'outline'}
+                                                            onClick={() => setUserData({ ...userData, role: 'ADMIN' })}
+                                                            className={`${userData.role === 'ADMIN' ? "bg-orange-600 hover:bg-orange-700 text-white" : "border-zinc-300"} flex-1 cursor-pointer`}
+                                                        >
+                                                            Admin
+                                                        </Button>
+                                                    </div>
+                                                </div>
+
+                                                <Input
+                                                    value={userData.password}
+                                                    onChange={(e) => setUserData({ ...userData, password: e.target.value })}
+                                                    placeholder="Nova senha (deixe em branco para não alterar)"
+                                                    type="password"
+                                                    className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
+                                                />
+                                            </div>
+
+                                            <DialogFooter>
+                                                <Button
+                                                    disabled={loading}
+                                                    type="submit"
+                                                    className="w-full cursor-pointer bg-orange-600 hover:bg-orange-700 text-white"
+                                                >
+                                                    Salvar Alterações
+                                                </Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                                {brands.map((brand) => (
+                                    <div className="flex flex-col items-center">
+                                        <img src={brand.logo_img || ''} alt="" className="rounded-2xl object-cover h-50 w-full" />
+                                        <h1 className="font-bold truncate">{brand.name}</h1>
+                                    </div>
+                                ))}
                             </div>
                         </section>
                     )}

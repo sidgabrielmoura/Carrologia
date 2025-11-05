@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/prisma";
-import { useUser } from "@/stores/user";
 
 export async function POST() {
   try {
@@ -42,7 +41,7 @@ export async function DELETE(req: Request) {
 
     return NextResponse.json(cars);
   } catch (error) {
-    console.error("💥 Erro no POST /api/tasks:", error);
+    console.error("💥 Erro no POST /api/cars:", error);
     return NextResponse.json({ message: "Erro interno" }, { status: 500 });
   }
 }

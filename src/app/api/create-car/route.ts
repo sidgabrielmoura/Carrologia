@@ -39,6 +39,7 @@ export async function POST(req: Request) {
         imageUrl: body.imageUrl,
         videoUrl,
         description: body.description,
+        brandId: body.brandId
       },
     });
 

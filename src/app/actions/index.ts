@@ -1,3 +1,4 @@
+import { useBrandsStore } from "@/stores/brands"
 import { useCarsStore } from "@/stores/cars"
 import { useUser } from "@/stores/user"
 
@@ -212,5 +213,54 @@ export async function updateCar(id: string, carData: any) {
     } catch (error) {
         console.error("❌ Erro em updateCar:", error)
         throw error
+    }
+}
+
+export async function createBrand(brand_name: string, logo: string, car_id: string) {
+    try{
+        const response = await fetch('/api/brands/register-brand', {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                car_id,
+                logo,
+                brand_name
+            })
+        })
+
+        if(!response.ok){
+            throw new Error('Erro ao criar marca')
+        }
+
+        const data = await response.json()
+
+        await getBrands()
+
+        return data
+    }catch(error){  
+        console.log(error)
+    }
+}
+
+export async function getBrands() {
+    try{
+        const response = await fetch('/api/brands/get-brands', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'}
+        })
+
+        if(!response.ok){
+            throw new Error('erro ao carregar as marcas')
+        }
+
+        const data = await response.json()
+
+        useBrandsStore.brands = data
+
+        return data
+    }catch (error){
+        console.log(error)
     }
 }

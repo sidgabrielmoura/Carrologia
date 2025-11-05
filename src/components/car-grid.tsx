@@ -8,6 +8,7 @@ import { CarModal } from "./car-modal"
 import { useCarsStore } from "@/stores/cars"
 import { useSnapshot } from "valtio"
 import { useLayout } from "@/stores/layout"
+import { motion } from 'framer-motion'
 
 interface Car {
   id: number
@@ -177,58 +178,76 @@ export function CarGrid() {
             </div>
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <motion.div
+            className="flex items-center gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth px-4 py-2"
+            whileTap={{ cursor: "grabbing" }}
+          >
             {carsToShow.map((car) => (
-              <Card
+              <motion.div
                 key={car.id}
-                className="group hover:shadow-lg mt-6 transition-all duration-300 border-border hover:border-accent/50 p-0"
+                className="snap-center flex-shrink-0 w-[300px]"
+                whileHover={{ scale: 1.01 }}
               >
-                <CardContent className="!p-0">
-                  <div className="relative overflow-hidden rounded-t-lg">
-                    <img
-                      src={car.imageUrl || "/placeholder.svg"}
-                      alt={`${car.brand} ${car.name}`}
-                      className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <Badge className="absolute top-3 right-3 bg-accent text-accent-foreground">{car.year}</Badge>
-                  </div>
-
-                  <div className="p-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <h3 className="text-xl font-bold text-foreground truncate">
-                        {car.brand} {car.name}
-                      </h3>
-                      <span className="text-lg font-semibold text-accent">R$ {car.fipe.toFixed(3)}</span>
-                    </div>
-
-                    <div className="space-y-2 mb-4 text-sm text-muted-foreground">
-                      <div className="flex justify-between">
-                        <span>Motor:</span>
-                        <span className="font-medium text-foreground">{car.specifications?.engine}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Potência:</span>
-                        <span className="font-medium text-foreground">{car.specifications?.power}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Consumo:</span>
-                        <span className="font-medium text-foreground">{car.specifications?.consumption}</span>
+                <Card
+                  key={car.id}
+                  className="group hover:shadow-lg mt-6 transition-all duration-300 border-border hover:border-accent/50 p-0"
+                >
+                  <CardContent className="!p-0">
+                    <div className="relative overflow-hidden rounded-t-lg">
+                      <img
+                        src={car.imageUrl || "/placeholder.svg"}
+                        alt={`${car.brand} ${car.name}`}
+                        className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute top-3 right-3 space-x-1">
+                        <Badge className="bg-accent text-accent-foreground">{car.year}</Badge>
+                        {car.popular && (
+                          <Badge className="bg-sky-500 text-accent-foreground">Popular</Badge>
+                        )}
                       </div>
                     </div>
 
-                    <Button
-                      onClick={() => handleOpenCarInformations(car)}
-                      className="w-full bg-accent cursor-pointer hover:bg-accent/90 text-accent-foreground"
-                    >
-                      Ver Especificações Completas
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
+                    <div className="p-6">
+                      <div className="flex items-center justify-between mb-3 gap-2">
+                        <h3 className="text-xl font-bold text-foreground truncate">
+                          {car.brand} {car.name}
+                        </h3>
+                        <span className="text-lg font-semibold text-accent text-nowrap">R$ {car.fipe.toFixed(3)}</span>
+                      </div>
+
+                      <div className="space-y-2 mb-4 text-sm text-muted-foreground">
+                        <div className="flex justify-between gap-3">
+                          <span>Motor:</span>
+                          <span className="font-medium text-foreground truncate">{car.specifications?.engine}</span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span>Potência:</span>
+                          <span className="font-medium text-foreground truncate">{car.specifications?.power}</span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span>Consumo:</span>
+                          <span className="font-medium text-foreground truncate">{car.specifications?.consumption}</span>
+                        </div>
+                      </div>
+
+                      <Button
+                        onClick={() => handleOpenCarInformations(car)}
+                        className="w-full bg-accent cursor-pointer hover:bg-accent/90 text-accent-foreground"
+                      >
+                        Ver Especificações Completas
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
             ))}
+          </motion.div>
+          
+          <div className="w-full flex justify-center mt-8">
+            <Button variant={'outline'} className="cursor-pointer px-10">Ver todos</Button>
           </div>
         </div>
-      </section>
+      </section >
 
       <CarModal open car={selectedCar} onClose={() => setSelectedCar(null)} />
     </>

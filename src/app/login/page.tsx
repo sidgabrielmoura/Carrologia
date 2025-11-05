@@ -7,7 +7,6 @@ import { signIn } from "next-auth/react";
 import { Button } from '@/components/ui/button';
 
 export default function LoginPage() {
-    const route = useRouter()
     const [loading, setLoading] = useState(false)
     const [userData, setUserData] = useState({
         email: '',
