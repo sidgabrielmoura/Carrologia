@@ -85,7 +85,8 @@ export async function PUT(req: Request) {
         imageUrl: body.carData.imageUrl,
         videoUrl,
         description: body.carData.description,
-        popular: body.carData.popular
+        popular: body.carData.popular,
+        bodyworkId: body.carData.bodyworkId
       },
     });
 

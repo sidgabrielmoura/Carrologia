@@ -160,14 +160,14 @@ export function CarGrid() {
   return (
     <>
       <section className="py-16 bg-background">
-        {!layout.isSearching && (
+        {/* {!layout.isSearching && (
           <div className="flex flex-wrap w-full justify-center items-center gap-2 mb-8">
             {quickSearch.map((item, i) => (
               <Button onClick={() => handleQuickSearchCars(item)} key={i} variant={letterSelected === item ? 'default' : 'outline'} size={'icon'} className="cursor-pointer text-md size-12 uppercase">{item}</Button>
             ))}
           </div>
-        )}
-        <div className="container mx-auto px-4">
+        )} */}
+        <div className="container mx-auto">
           {!layout.isSearching && (
             <div className="text-center mb-12">
               <h2 className="text-3xl font-bold text-foreground mb-4">Modelos em Destaque</h2>
@@ -179,7 +179,7 @@ export function CarGrid() {
           )}
 
           <motion.div
-            className="flex items-center gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth px-4 py-2"
+            className="flex items-center gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth py-2"
             whileTap={{ cursor: "grabbing" }}
           >
             {carsToShow.map((car) => (

@@ -4,10 +4,12 @@ import { Footer } from "@/components/footer";
 import { HeroSection } from "@/components/hero-section";
 import { Navbar } from "@/components/navbar";
 import { useEffect } from "react";
-import { GetCars } from "./actions";
+import { getBodyworks, getBrands, GetCars, GetRankedCars } from "./actions";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import RankedCars from "@/components/RankedCars";
+import RankedCars from "@/components/rankedCars";
+import BrandGrid from "@/components/brand-grid";
+import BodyworkComponent from "@/components/BodyworkComponent";
 
 export default function Home() {
   const router = useRouter()
@@ -19,16 +21,21 @@ export default function Home() {
     if (!session) {
       router.push("/login");
     } else {
-      GetCars();
+      GetCars()
+      GetRankedCars()
+      getBrands()
+      getBodyworks()
     }
   }, [session, status]);
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main>
+      <main className="w-full max-w-[1500px] mx-auto">
         <HeroSection />
-        {/* <RankedCars /> */}
+        <BrandGrid />
+        <RankedCars />
+        <BodyworkComponent/>
         <CarGrid />
       </main>
       <Footer />

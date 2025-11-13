@@ -1,5 +1,5 @@
 "use client"
-import { ArrowRight, Car, CarFront, Code2, KeySquare, MoreHorizontal, Plus, Trash, User, User2 } from "lucide-react";
+import { ArrowRight, Car, CarFront, Code2, KeySquare, MoreHorizontal, Plus, ToolCase, Trash, Trophy, User, User2, Workflow } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { createCar, deleteCar, updateCar, DeleteUser, EditUser, GetAllUsers, GetCars, Register, getBrands } from "@/app/actions";
+import { createCar, deleteCar, updateCar, DeleteUser, EditUser, GetAllUsers, GetCars, Register, getBrands, CreateCarOnRank, DeleteCarOnRank, GetRankedCars, createBrand, deleteBrands, getBodyworks } from "@/app/actions";
 import { toast } from "sonner";
 import { useSnapshot } from "valtio";
 import { useUser } from "@/stores/user";
@@ -26,15 +26,24 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useBrandsStore } from "@/stores/brands";
+import { useRankedCars } from "@/stores/rankedCars";
+import { useBodyworkStore } from "@/stores/bodywork";
+
+interface BrandInterface {
+    cars: any[],
+    logo_img: string,
+    name: string,
+    id: string,
+}
 
 export default function AdminComponent() {
     const [loading, setLoading] = useState(false)
     const [newUserModal, setNewUserModal] = useState(false)
+    const [newCarRank, setNewCarRank] = useState(false)
     const users = useSnapshot(useUser.all_users)
     const brands = useSnapshot(useBrandsStore.brands)
     const cars = useSnapshot(useCarsStore)
-    const [json_mode, setJson_mode] = useState(false)
-    const [jsonValue, setJsonValue] = useState<string>("");
+    const rankCars = useSnapshot(useRankedCars)
     const [userData, setUserData] = useState({
         name: '',
         email: '',
@@ -42,9 +51,14 @@ export default function AdminComponent() {
         id: '',
         role: ''
     })
+    const [brandData, setBrandData] = useState({
+        brand_name: '',
+        img_url: ''
+    })
     const [userEdit, setUserEdit] = useState(false)
     const [search, setSearch] = useState("")
     const [searchCars, setSearchCars] = useState('')
+    const [searchBrands, setSearchBrands] = useState('')
     const [userDeleting, setUserDeleting] = useState('')
     const [loadingPage, setLoadingPage] = useState(false)
     const [hasFetchedCars, setHasFetchedCars] = useState(false)
@@ -57,6 +71,12 @@ export default function AdminComponent() {
     const session = useSession().data
     const [deleteUserModal, setDeleteUserModal] = useState(false)
     const [userSelected, setUserSelected] = useState('')
+    const [selectedCar, setSelectedCar] = useState("");
+    const selectedBrandLabel = cars.cars.find(car => car.id.toString() === selectedCar)?.name
+    const [removingCarId, setRemovingCarId] = useState('')
+    const toggleDeleteBrandModal = useRef<HTMLButtonElement>(null)
+    const [filteredBrands, setFilteredBrands] = useState<any[]>([])
+    const bodyworkStore = useSnapshot(useBodyworkStore)
 
     const initialCarData = {
         name: "",
@@ -67,6 +87,7 @@ export default function AdminComponent() {
         imageUrl: "",
         videoUrl: "",
         description: "",
+        bodyworkId: "",
         popular: false,
         brandModel: "",
         specifications: {
@@ -126,6 +147,7 @@ export default function AdminComponent() {
                 .max(new Date().getFullYear() + 3, "Ano muito à frente do atual")
         ),
         imageUrl: z.string().min(1, 'URL da imagem é obrigatória'),
+        bodyworkId: z.string().min(1, 'Carroceria obrigatória'),
         videoUrl: z.string().min(1, 'URL do vídeo é obrigatória'),
         description: z.string().min(10, 'Descrição deve ter ao menos 10 caracteres'),
         popular: z.boolean().optional(),
@@ -200,6 +222,7 @@ export default function AdminComponent() {
                 videoUrl: data.videoUrl || "",
                 description: data.description || "",
                 popular: data.popular,
+                bodyworkId: data.bodyworkId,
                 brandId: data.brandId,
                 specifications: {
                     ...(data.specifications || {}),
@@ -313,6 +336,22 @@ export default function AdminComponent() {
         }
     }
 
+    const handleCreateBrand = async () => {
+        setLoading(true)
+        try {
+            const response = await createBrand(brandData.brand_name, brandData.img_url)
+
+            if (response) {
+                toast.success('marca registrada com sucesso!')
+            }
+        } catch (error) {
+            toast.error('erro ao registrar marca')
+            console.log(error)
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const handleEditUser = async () => {
         setLoading(true)
         try {
@@ -362,7 +401,8 @@ export default function AdminComponent() {
     const fetchBrands = async () => {
         setLoadingPage(true)
         try {
-            await getBrands()
+            const response = await getBrands()
+            setFilteredBrands(response)
         } catch (error) {
             console.log(error)
             toast.error("Erro ao buscar carros")
@@ -370,6 +410,23 @@ export default function AdminComponent() {
             setLoadingPage(false)
         }
     }
+
+    const fetchRankedCars = async () => {
+        setLoadingPage(true)
+        try {
+            await GetRankedCars()
+        } catch (error) {
+            console.log(error)
+            toast.error("Erro ao buscar carros")
+        } finally {
+            setLoadingPage(false)
+        }
+    }
+
+    useEffect(() => {
+        const newList = brands.filter(brand => brand.name?.toLowerCase().includes(searchBrands.toLowerCase()))
+        setFilteredBrands(newList)
+    }, [searchBrands, brands])
 
     useEffect(() => {
         if (loadingPage) return;
@@ -381,7 +438,9 @@ export default function AdminComponent() {
                 const tasks: Promise<any>[] = []
                 if (users.length === 0 && !hasFetchedUsers) tasks.push(fetchUsers())
                 if (brands.length === 0) tasks.push(fetchBrands())
-                if ((cars?.cars?.length || 0) === 0 && !hasFetchedCars) tasks.push(fetchCars())
+                if (cars.cars.length === 0) tasks.push(fetchCars())
+                if (rankCars.rank.length === 0) tasks.push(fetchRankedCars())
+                if (bodyworkStore.bodyworks.length === 0) tasks.push(getBodyworks())
 
                 if (tasks.length > 0) await Promise.all(tasks)
             } catch (err) {
@@ -473,6 +532,58 @@ export default function AdminComponent() {
         }
     }
 
+    const handleCreateCarOnRank = async () => {
+        setLoading(true)
+        try {
+            const id = selectedCar
+            const response = await CreateCarOnRank(id)
+
+            if (response) {
+                toast.success('Carro adicionado ao ranking')
+                setNewCarRank(false)
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error('erro ao adicionar o carro ao ranking')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleRemoveCarOnRank = async (carId: string) => {
+        setRemovingCarId(carId)
+        setLoading(true)
+        try {
+            const response = await DeleteCarOnRank(carId)
+
+            if (response) {
+                toast.success('Carro removido do ranking')
+                setNewCarRank(false)
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error('erro ao remover o carro do ranking')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleDeleteBrand = async (id: string) => {
+        setLoading(true)
+        try {
+            const response = await deleteBrands(id)
+
+            if (response) {
+                toast.success('marca deletada com sucesso!')
+                toggleDeleteBrandModal.current?.click()
+            }
+        } catch (error) {
+            console.log(error)
+        } finally {
+            setLoading(false)
+        }
+    }
+    
     return (
         <>
             {loadingPage ? (
@@ -541,14 +652,36 @@ export default function AdminComponent() {
                             <KeySquare />
                             Marcas
                         </Button>
+                        <Button onClick={() => handleTabChange('rank')} variant={activeTab === 'rank' ? 'default' : 'ghost'} className="w-full cursor-pointer border-zinc-400/40 border">
+                            <Trophy />
+                            Ranking
+                        </Button>
+                        <Button onClick={() => handleTabChange('bodywork')} variant={activeTab === 'bodywork' ? 'default' : 'ghost'} className="w-full cursor-pointer border-zinc-400/40 border">
+                            <ToolCase />
+                            Carrocerias
+                        </Button>
                     </section>
 
                     <div className="fixed top-3 left-5 z-30 md:hidden">
                         <Popover>
                             <PopoverTrigger asChild>
-                                <div className="text-amber-600 bg-zinc-300 p-2 rounded-full cursor-pointer">{activeTab === 'users' ? <User className="size-7" /> : <Car className="size-8" />}</div>
+                                <div className="text-amber-600 bg-zinc-300 p-2 rounded-full cursor-pointer">
+                                    {activeTab === 'users' ?
+                                        <User className="size-7" /> : activeTab === 'cars' ?
+                                            <Car className="size-8" /> : activeTab === 'brand' ?
+                                                <KeySquare className="size-7" /> : activeTab === 'rank' ?
+                                                    <Trophy className="size-7" /> : activeTab === 'bodywork' &&
+                                                    <ToolCase className="size-7" />
+                                    }
+                                </div>
                             </PopoverTrigger>
                             <PopoverContent className="max-w-80 w-60 ml-4 mt-2 bg-zinc-300/80 backdrop-blur-sm">
+                                <div className="border border-zinc-400/80 rounded-2xl mb-3 shadow p-2">
+                                    <Link href={'/'} className="font-black text-2xl text-center">
+                                        <h1 className="text-amber-600 flex justify-center gap-2 items-center"><Car /> Carrologia</h1>
+                                        <h1>Administrador</h1>
+                                    </Link>
+                                </div>
                                 <div className="flex flex-col gap-2">
                                     <Button onClick={() => handleTabChange('users')} variant={activeTab === 'users' ? 'default' : 'ghost'} className="w-full cursor-pointer border-zinc-400/40 border">
                                         <User2 />
@@ -557,6 +690,18 @@ export default function AdminComponent() {
                                     <Button onClick={() => handleTabChange('cars')} variant={activeTab === 'cars' ? 'default' : 'ghost'} className="w-full cursor-pointer border-zinc-400/40 border">
                                         <CarFront />
                                         Carros
+                                    </Button>
+                                    <Button onClick={() => handleTabChange('brand')} variant={activeTab === 'brand' ? 'default' : 'ghost'} className="w-full cursor-pointer border-zinc-400/40 border">
+                                        <KeySquare />
+                                        Marcas
+                                    </Button>
+                                    <Button onClick={() => handleTabChange('rank')} variant={activeTab === 'rank' ? 'default' : 'ghost'} className="w-full cursor-pointer border-zinc-400/40 border">
+                                        <Trophy />
+                                        Ranking
+                                    </Button>
+                                    <Button onClick={() => handleTabChange('bodywork')} variant={activeTab === 'bodywork' ? 'default' : 'ghost'} className="w-full cursor-pointer border-zinc-400/40 border">
+                                        <ToolCase />
+                                        Carrocerias
                                     </Button>
                                 </div>
                             </PopoverContent>
@@ -949,6 +1094,45 @@ export default function AdminComponent() {
                                                                 </div>
                                                             )}
                                                         />
+
+                                                        <Controller
+                                                            control={control}
+                                                            name="bodyworkId"
+                                                            render={({ field }) => {
+                                                                const selectedBodywork = bodyworkStore.bodyworks.find(
+                                                                    (b) => b.id === field.value
+                                                                )
+
+                                                                return (
+                                                                    <div>
+                                                                        <label className="text-sm ml-2 text-muted-foreground">
+                                                                            Carroceria *
+                                                                        </label>
+                                                                        <Select
+                                                                            value={selectedBodywork?.id ?? ""}
+                                                                            onValueChange={(v) => field.onChange(v)}
+                                                                        >
+                                                                            <SelectTrigger className="w-full bg-stone-200">
+                                                                                {selectedBodywork ? selectedBodywork.name : "Carroceria"}
+                                                                            </SelectTrigger>
+                                                                            <SelectContent className="bg-stone-200">
+                                                                                {bodyworkStore.bodyworks.map((bodywork) => (
+                                                                                    <SelectItem key={bodywork.id} value={bodywork.id}>
+                                                                                        {bodywork.name}
+                                                                                    </SelectItem>
+                                                                                ))}
+                                                                            </SelectContent>
+                                                                        </Select>
+
+                                                                        {errors.bodyworkId && (
+                                                                            <p className="text-destructive text-sm mt-1">
+                                                                                {errors.bodyworkId.message}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                )
+                                                            }}
+                                                        />
                                                     </div>
 
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1279,7 +1463,95 @@ export default function AdminComponent() {
                                 )}
                             </div>
                         </section>
-                    ) : activeTab === 'brand' && (
+                    ) : activeTab === 'brand' ? (
+                        <section className="w-full h-full max-h-[calc(100dvh)] overflow-y-auto px-5">
+                            <div className="h-18 flex items-center justify-between gap-2 sticky top-0 z-20 bg-zinc-200/80 backdrop-blur-sm">
+                                <div className="w-[100px]" />
+                                <Input
+                                    value={searchBrands}
+                                    onChange={(e) => setSearchBrands(e.target.value)}
+                                    placeholder="Pesquisar marcas"
+                                    className="w-full max-w-160 text-zinc-700 bg-zinc-50 shadow-md hover:shadow-lg"
+                                />
+
+                                <Dialog open={newUserModal} onOpenChange={setNewUserModal}>
+                                    <DialogTrigger asChild>
+                                        <Button className="cursor-pointer">
+                                            <Plus className="md:mr-2 h-4 w-4" />
+                                            <h1 className="max-md:hidden">Registrar marca</h1>
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[425px]">
+                                        <DialogHeader>
+                                            <DialogTitle>Registrar marca</DialogTitle>
+                                            <DialogDescription>
+                                                Preencha os dados abaixo para registrar uma nova marca
+                                            </DialogDescription>
+                                        </DialogHeader>
+
+                                        <form action={handleCreateBrand} className="space-y-4">
+                                            <div className="grid gap-4 py-4">
+                                                <Input
+                                                    value={brandData.brand_name}
+                                                    onChange={(e) => setBrandData({ ...brandData, brand_name: e.target.value })}
+                                                    placeholder="Nome da marca"
+                                                    type="text"
+                                                    required
+                                                    className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
+                                                />
+
+                                                <Input
+                                                    value={brandData.img_url}
+                                                    onChange={(e) => setBrandData({ ...brandData, img_url: e.target.value })}
+                                                    placeholder="url da logo da marca"
+                                                    type="text"
+                                                    required
+                                                    className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
+                                                />
+                                            </div>
+
+                                            <DialogFooter>
+                                                <Button
+                                                    disabled={loading}
+                                                    type="submit"
+                                                    className="w-full cursor-pointer bg-orange-600 hover:bg-orange-700 text-white"
+                                                >
+                                                    Registrar
+                                                </Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                                {filteredBrands.map((brand) => (
+                                    <div className="flex flex-col items-center relative">
+                                        <img src={brand.logo_img || ''} alt="" className="rounded-2xl object-cover h-50 w-full" />
+                                        <h1 className="font-bold truncate">{brand.name}</h1>
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button variant={'destructive'} className="bg-red-500/20 border border-red-500/70 rounded-full absolute right-2 top-2 cursor-pointer" size={'icon'}><Trash /></Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>Deletar marca</DialogTitle>
+                                                    <DialogDescription>Deseja realmente deletar essa marca?</DialogDescription>
+                                                </DialogHeader>
+
+                                                <section className="w-full flex items-center gap-3">
+                                                    <Button disabled={loading} onClick={() => handleDeleteBrand(brand.id)} className="cursor-pointer flex-1 bg-red-500/40 text-red-800 hover:bg-red-500/50 border border-red-500/70">Deletar</Button>
+                                                    <DialogClose asChild>
+                                                        <Button ref={toggleDeleteBrandModal} variant={'secondary'} className="flex-1 cursor-pointer">Cancelar</Button>
+                                                    </DialogClose>
+                                                </section>
+                                            </DialogContent>
+                                        </Dialog>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+                    ) : activeTab === 'rank' ? (
                         <section className="w-full h-full max-h-[calc(100dvh)] overflow-y-auto px-5">
                             <div className="h-18 flex items-center justify-between gap-2 sticky top-0 z-20 bg-zinc-200/80 backdrop-blur-sm">
                                 <div className="w-[100px]" />
@@ -1292,71 +1564,211 @@ export default function AdminComponent() {
                                     className="w-full max-w-160 text-zinc-700 bg-zinc-50 shadow-md hover:shadow-lg"
                                 />
 
-                                <Dialog open={newUserModal} onOpenChange={setNewUserModal}>
+                                <Dialog open={newCarRank} onOpenChange={setNewCarRank}>
                                     <DialogTrigger asChild>
-                                        {/* <Button className="cursor-pointer">
+                                        <Button className="cursor-pointer">
                                             <Plus className="md:mr-2 h-4 w-4" />
-                                            <h1 className="max-md:hidden">Criar Nova marca</h1>
-                                        </Button> */}
+                                            <h1 className="max-md:hidden">Novo carro ao rank</h1>
+                                        </Button>
                                     </DialogTrigger>
                                     <DialogContent className="sm:max-w-[425px]">
                                         <DialogHeader>
-                                            <DialogTitle>Criar nova marca</DialogTitle>
+                                            <DialogTitle>Adicionar carro ao ranking</DialogTitle>
                                             <DialogDescription>
-                                                Preencha os dados abaixo para criar uma nova marca
+                                                Selecione o carro que você quer adicionar ao ranking
                                             </DialogDescription>
                                         </DialogHeader>
 
-                                        <form action={handleRegister} className="space-y-4">
+                                        <form action={handleCreateCarOnRank} className="space-y-4">
+                                            <div className="grid gap-4 py-4">
+                                                <Label>Selecione o carro</Label>
+                                                <Select
+                                                    value={selectedCar}
+                                                    onValueChange={setSelectedCar}
+                                                >
+                                                    <SelectTrigger className="w-full bg-stone-200">
+                                                        <span>{selectedBrandLabel || "Marca"}</span>
+                                                    </SelectTrigger>
+
+                                                    <SelectContent className="bg-stone-200">
+                                                        {cars.cars
+                                                            .filter(car =>
+                                                                !rankCars.rank.some(r => r.carId === car.id)
+                                                            )
+                                                            .map(car => (
+                                                                <SelectItem key={car.id} value={car.id.toString()}>
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className="w-12 h-10 rounded-lg overflow-hidden flex-shrink-0">
+                                                                            <img
+                                                                                src={car.imageUrl || ''}
+                                                                                alt={car.name}
+                                                                                className="w-full h-full object-cover"
+                                                                            />
+                                                                        </div>
+
+                                                                        <div className="flex flex-col">
+                                                                            <h3 className="text-md font-semibold text-stone-900">
+                                                                                {car.name}
+                                                                            </h3>
+                                                                            <span className="text-stone-700 font-medium mt-1">
+                                                                                {car.fipe}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </SelectItem>
+                                                            ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+
+                                            <DialogFooter>
+                                                <Button
+                                                    disabled={loading}
+                                                    type="submit"
+                                                    className="w-full cursor-pointer bg-orange-600 hover:bg-orange-700 text-white"
+                                                >
+                                                    Criar
+                                                </Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </DialogContent>
+                                </Dialog>
+
+                            </div>
+                            <section className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-4 gap-4">
+                                {rankCars.rank.map(rank => (
+                                    <Card
+                                        key={rank.id}
+                                        className="group hover:shadow-lg mt-6 transition-all duration-300 border-border hover:border-accent/50 p-0"
+                                    >
+                                        <CardContent className="!p-0">
+                                            <div className="relative overflow-hidden rounded-t-lg">
+                                                <img
+                                                    src={rank.car.imageUrl || "/placeholder.svg"}
+                                                    alt={`${rank.car.brand} ${rank.car.name}`}
+                                                    className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
+                                                />
+
+                                                <div className="absolute top-3 right-3 flex items-center gap-1">
+                                                    <Badge className="bg-accent text-accent-foreground">{rank.car.year}</Badge>
+
+                                                    {rank.car.popular && (
+                                                        <Badge className="bg-sky-500 text-accent-foreground">Popular</Badge>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="p-6">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <h3 className="text-xl font-bold text-foreground truncate">
+                                                        {rank.car.brand} {rank.car.name}
+                                                    </h3>
+                                                    <span className="text-lg font-semibold text-accent text-nowrap">R$ {rank.car.fipe?.toFixed(3)}</span>
+                                                </div>
+
+                                                <div className="space-y-2 mb-4 text-sm text-muted-foreground">
+                                                    <div className="flex justify-between gap-3">
+                                                        <span>Motor:</span>
+                                                        <span className="font-medium text-foreground truncate">{rank.car.specifications?.engine}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-3">
+                                                        <span>Potência:</span>
+                                                        <span className="font-medium text-foreground truncate">{rank.car.specifications?.power}</span>
+                                                    </div>
+                                                    <div className="flex justify-between gap-3">
+                                                        <span>Consumo:</span>
+                                                        <span className="font-medium text-foreground truncate">{rank.car.specifications?.consumption}</span>
+                                                    </div>
+                                                </div>
+
+                                                <section className="flex items-center gap-3 w-full">
+                                                    <Dialog>
+                                                        <DialogTrigger asChild>
+                                                            <Button
+                                                                disabled={loading}
+                                                                className="w-full cursor-pointer flex-1 hover:bg-red-500/50
+                                                                        bg-red-500/60 border border-red-500/70 text-red-700"
+                                                            >
+                                                                Remover do rank
+                                                            </Button>
+                                                        </DialogTrigger>
+                                                        <DialogContent className={`${removingCarId === rank.carId && 'opacity-60 scale-105 transition-all duration-200'}`}>
+                                                            <DialogTitle>Deletar Carro?</DialogTitle>
+                                                            <DialogDescription>Deseja deletar o {rank.car.name} do ranking? essa ação não pode ser desfeita</DialogDescription>
+
+                                                            <div className="flex items-center gap-1 mt-8">
+                                                                <Button
+                                                                    onClick={() => handleRemoveCarOnRank(rank.carId)}
+                                                                    disabled={loading}
+                                                                    variant={'destructive'}
+                                                                    size={'sm'}
+                                                                    className="cursor-pointer flex-1 hover:scale-y-105"
+                                                                >
+                                                                    <Trash />
+                                                                    Deletar
+                                                                </Button>
+
+                                                                <DialogClose asChild>
+                                                                    <Button variant={'secondary'} size={'sm'} className="cursor-pointer flex-1 hover:scale-y-105 bg-zinc-200 hover:bg-zinc-300/70">
+                                                                        Cancelar
+                                                                    </Button>
+                                                                </DialogClose>
+                                                            </div>
+
+                                                            <DialogClose ref={dialogCloseRef} className="hidden" />
+                                                        </DialogContent>
+                                                    </Dialog>
+                                                </section>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </section>
+                        </section>
+                    ) : activeTab === 'bodywork' ? (
+                        <section className="w-full h-full max-h-[calc(100dvh)] overflow-y-auto px-5">
+                            <div className="h-18 flex items-center justify-between gap-2 sticky top-0 z-20 bg-zinc-200/80 backdrop-blur-sm">
+                                <div className="w-[100px]" />
+                                <Input
+                                    value={search}
+
+                                    // onChange={(e) => setSearch(e.target.value)}
+
+                                    placeholder="Pesquisar carrocerias"
+                                    className="w-full max-w-160 text-zinc-700 bg-zinc-50 shadow-md hover:shadow-lg"
+                                />
+
+                                <Dialog>
+                                    <DialogTrigger asChild>
+                                        <Button className="cursor-pointer">
+                                            <Plus className="md:mr-2 h-4 w-4" />
+                                            <h1 className="max-md:hidden">Nova carroceria</h1>
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="sm:max-w-[425px]">
+                                        <DialogHeader>
+                                            <DialogTitle>Adicionar carro ao ranking</DialogTitle>
+                                            <DialogDescription>
+                                                Selecione o carro que você quer adicionar ao ranking
+                                            </DialogDescription>
+                                        </DialogHeader>
+
+                                        <form action={handleCreateCarOnRank} className="space-y-4">
                                             <div className="grid gap-4 py-4">
                                                 <Input
-                                                    value={userData.name}
-                                                    onChange={(e) => setUserData({ ...userData, name: e.target.value })}
-                                                    placeholder="Nome do usuário"
+                                                    value={brandData.brand_name}
+                                                    onChange={(e) => setBrandData({ ...brandData, brand_name: e.target.value })}
+                                                    placeholder="Nome da carroceria"
                                                     type="text"
                                                     required
                                                     className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
                                                 />
 
                                                 <Input
-                                                    value={userData.email}
-                                                    onChange={(e) => setUserData({ ...userData, email: e.target.value })}
-                                                    placeholder="Email"
-                                                    type="email"
-                                                    required
-                                                    className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
-                                                />
-
-                                                <div>
-                                                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-2 block">
-                                                        Função
-                                                    </label>
-                                                    <div className="flex space-x-3">
-                                                        <Button
-                                                            type="button"
-                                                            variant={userData.role === 'USER' ? 'default' : 'outline'}
-                                                            onClick={() => setUserData({ ...userData, role: 'USER' })}
-                                                            className={`${userData.role === 'USER' ? "bg-orange-600 hover:bg-orange-700 text-white" : "border-zinc-300"} flex-1 cursor-pointer`}
-                                                        >
-                                                            Usuário
-                                                        </Button>
-
-                                                        <Button
-                                                            type="button"
-                                                            variant={userData.role === 'ADMIN' ? 'default' : 'outline'}
-                                                            onClick={() => setUserData({ ...userData, role: 'ADMIN' })}
-                                                            className={`${userData.role === 'ADMIN' ? "bg-orange-600 hover:bg-orange-700 text-white" : "border-zinc-300"} flex-1 cursor-pointer`}
-                                                        >
-                                                            Admin
-                                                        </Button>
-                                                    </div>
-                                                </div>
-
-                                                <Input
-                                                    value={userData.password}
-                                                    onChange={(e) => setUserData({ ...userData, password: e.target.value })}
-                                                    placeholder="Senha"
-                                                    type="password"
+                                                    value={brandData.img_url}
+                                                    onChange={(e) => setBrandData({ ...brandData, img_url: e.target.value })}
+                                                    placeholder="url da imagem da carroceria"
+                                                    type="text"
                                                     required
                                                     className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
                                                 />
@@ -1375,93 +1787,35 @@ export default function AdminComponent() {
                                     </DialogContent>
                                 </Dialog>
 
-                                <Dialog open={userEdit} onOpenChange={setUserEdit}>
-                                    <DialogContent className="sm:max-w-[425px]">
-                                        <DialogHeader>
-                                            <DialogTitle>Editar {userData.name}</DialogTitle>
-                                            <DialogDescription>
-                                                Atualize as informações de usuário ou defina uma nova senha.
-                                            </DialogDescription>
-                                        </DialogHeader>
-
-                                        <form action={handleEditUser} className="space-y-4">
-                                            <div className="grid gap-4 py-4">
-                                                <Input
-                                                    value={userData.name}
-                                                    onChange={(e) => setUserData({ ...userData, name: e.target.value })}
-                                                    placeholder="Nome do usuário"
-                                                    type="text"
-                                                    required
-                                                    className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
-                                                />
-
-                                                <Input
-                                                    value={userData.email}
-                                                    onChange={(e) => setUserData({ ...userData, email: e.target.value })}
-                                                    placeholder="Email"
-                                                    type="email"
-                                                    required
-                                                    className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
-                                                />
-
-                                                <div>
-                                                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mb-2 block">
-                                                        Função
-                                                    </label>
-                                                    <div className="flex space-x-3">
-                                                        <Button
-                                                            type="button"
-                                                            variant={userData.role === 'USER' ? 'default' : 'outline'}
-                                                            onClick={() => setUserData({ ...userData, role: 'USER' })}
-                                                            className={`${userData.role === 'USER' ? "bg-orange-600 hover:bg-orange-700 text-white" : "border-zinc-300"} flex-1 cursor-pointer`}
-                                                        >
-                                                            Usuário
-                                                        </Button>
-
-                                                        <Button
-                                                            type="button"
-                                                            variant={userData.role === 'ADMIN' ? 'default' : 'outline'}
-                                                            onClick={() => setUserData({ ...userData, role: 'ADMIN' })}
-                                                            className={`${userData.role === 'ADMIN' ? "bg-orange-600 hover:bg-orange-700 text-white" : "border-zinc-300"} flex-1 cursor-pointer`}
-                                                        >
-                                                            Admin
-                                                        </Button>
-                                                    </div>
-                                                </div>
-
-                                                <Input
-                                                    value={userData.password}
-                                                    onChange={(e) => setUserData({ ...userData, password: e.target.value })}
-                                                    placeholder="Nova senha (deixe em branco para não alterar)"
-                                                    type="password"
-                                                    className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
-                                                />
-                                            </div>
-
-                                            <DialogFooter>
-                                                <Button
-                                                    disabled={loading}
-                                                    type="submit"
-                                                    className="w-full cursor-pointer bg-orange-600 hover:bg-orange-700 text-white"
-                                                >
-                                                    Salvar Alterações
-                                                </Button>
-                                            </DialogFooter>
-                                        </form>
-                                    </DialogContent>
-                                </Dialog>
                             </div>
+                            <section className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                                {bodyworkStore.bodyworks.map(bodyworks => (
+                                    <div className="flex flex-col items-center relative">
+                                        <img src={bodyworks.image || ''} alt="" className="rounded-2xl object-cover h-50 w-full" />
+                                        <h1 className="font-bold truncate">{bodyworks.name}</h1>
+                                        <Dialog>
+                                            <DialogTrigger asChild>
+                                                <Button variant={'destructive'} className="bg-red-500/20 border border-red-500/70 rounded-full absolute right-2 top-2 cursor-pointer" size={'icon'}><Trash /></Button>
+                                            </DialogTrigger>
+                                            <DialogContent>
+                                                <DialogHeader>
+                                                    <DialogTitle>Deletar carroceria</DialogTitle>
+                                                    <DialogDescription>Deseja realmente deletar essa carroceria?</DialogDescription>
+                                                </DialogHeader>
 
-                            <div className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                                {brands.map((brand) => (
-                                    <div className="flex flex-col items-center">
-                                        <img src={brand.logo_img || ''} alt="" className="rounded-2xl object-cover h-50 w-full" />
-                                        <h1 className="font-bold truncate">{brand.name}</h1>
+                                                <section className="w-full flex items-center gap-3">
+                                                    <Button disabled={loading} onClick={() => handleDeleteBrand(bodyworks.id)} className="cursor-pointer flex-1 bg-red-500/40 text-red-800 hover:bg-red-500/50 border border-red-500/70">Deletar</Button>
+                                                    <DialogClose asChild>
+                                                        <Button ref={toggleDeleteBrandModal} variant={'secondary'} className="flex-1 cursor-pointer">Cancelar</Button>
+                                                    </DialogClose>
+                                                </section>
+                                            </DialogContent>
+                                        </Dialog>
                                     </div>
                                 ))}
-                            </div>
+                            </section>
                         </section>
-                    )}
+                    ) : <p>404</p>}
                 </main>
             )}
         </>
