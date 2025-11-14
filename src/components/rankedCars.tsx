@@ -8,6 +8,7 @@ import { Badge } from "./ui/badge"
 import { Button } from "./ui/button"
 import { cn } from "@/lib/utils"
 import { useLayout } from "@/stores/layout"
+import { formatMoney } from "@/app/actions/utils"
 
 export default function RankedCars() {
   const topCars = useSnapshot(useRankedCars)
@@ -108,7 +109,7 @@ export default function RankedCars() {
                       {rank.car.brand} {rank.car.name}
                     </h3>
                     <p className="text-red-400 font-semibold text-lg mb-4">
-                      R$ {rank.car.fipe.toFixed(3)}
+                      {formatMoney(rank.car.fipe)}
                     </p>
 
                     <div className="space-y-1 text-sm mb-4">

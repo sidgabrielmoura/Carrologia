@@ -18,14 +18,11 @@ export default function Home() {
   useEffect(() => {
     if (status === "loading") return
 
-    if (!session) {
-      router.push("/login");
-    } else {
-      GetCars()
-      GetRankedCars()
-      getBrands()
-      getBodyworks()
-    }
+    GetCars()
+    GetRankedCars()
+    getBrands()
+    getBodyworks()
+    
   }, [session, status]);
 
   return (
@@ -35,7 +32,7 @@ export default function Home() {
         <HeroSection />
         <BrandGrid />
         <RankedCars />
-        <BodyworkComponent/>
+        <BodyworkComponent />
         <CarGrid />
       </main>
       <Footer />

@@ -54,7 +54,7 @@ export function Navbar() {
         </div>
 
         <section className="flex gap-2 items-center">
-          {session?.user?.role !== 'USER' && (
+          {session && session?.user?.role !== 'USER' && (
             <Link href={'/admin'}>
               <Button variant="outline" className="flex items-center space-x-2 bg-transparent cursor-pointer">
                 <Trophy className="w-4 h-4" />

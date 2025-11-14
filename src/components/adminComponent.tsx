@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useForm, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { createCar, deleteCar, updateCar, DeleteUser, EditUser, GetAllUsers, GetCars, Register, getBrands, CreateCarOnRank, DeleteCarOnRank, GetRankedCars, createBrand, deleteBrands, getBodyworks } from "@/app/actions";
+import { createCar, deleteCar, updateCar, DeleteUser, EditUser, GetAllUsers, GetCars, Register, getBrands, CreateCarOnRank, DeleteCarOnRank, GetRankedCars, createBrand, deleteBrands, getBodyworks, createBodywork, deleteBodywork } from "@/app/actions";
 import { toast } from "sonner";
 import { useSnapshot } from "valtio";
 import { useUser } from "@/stores/user";
@@ -28,6 +28,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
 import { useBrandsStore } from "@/stores/brands";
 import { useRankedCars } from "@/stores/rankedCars";
 import { useBodyworkStore } from "@/stores/bodywork";
+import { formatMoney } from "@/app/actions/utils";
 
 interface BrandInterface {
     cars: any[],
@@ -77,6 +78,7 @@ export default function AdminComponent() {
     const toggleDeleteBrandModal = useRef<HTMLButtonElement>(null)
     const [filteredBrands, setFilteredBrands] = useState<any[]>([])
     const bodyworkStore = useSnapshot(useBodyworkStore)
+    const bodyworkRef = useRef<HTMLButtonElement>(null)
 
     const initialCarData = {
         name: "",
@@ -550,6 +552,40 @@ export default function AdminComponent() {
         }
     }
 
+    const handleCreateBodywork = async () => {
+        setLoading(true)
+        try {
+            const response = await createBodywork({ name: brandData.brand_name, image_url: brandData.img_url })
+
+            if (response) {
+                toast.success('Carroceria adicionada')
+                bodyworkRef.current?.click()
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error('erro ao adicionar a carroceria')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleDeleteBodywork = async (id: string) => {
+        setLoading(true)
+        try {
+            const response = await deleteBodywork(id)
+
+            if (response) {
+                toast.success('Carroceria deletada com sucesso')
+                bodyworkRef.current?.click()
+            }
+        } catch (error) {
+            console.log(error)
+            toast.error('erro ao deletar a carroceria')
+        } finally {
+            setLoading(false)
+        }
+    }
+
     const handleRemoveCarOnRank = async (carId: string) => {
         setRemovingCarId(carId)
         setLoading(true)
@@ -583,7 +619,7 @@ export default function AdminComponent() {
             setLoading(false)
         }
     }
-    
+
     return (
         <>
             {loadingPage ? (
@@ -1560,7 +1596,7 @@ export default function AdminComponent() {
 
                                     // onChange={(e) => setSearch(e.target.value)}
 
-                                    placeholder="Pesquisar marcas"
+                                    placeholder="Pesquisar no top10"
                                     className="w-full max-w-160 text-zinc-700 bg-zinc-50 shadow-md hover:shadow-lg"
                                 />
 
@@ -1587,7 +1623,7 @@ export default function AdminComponent() {
                                                     onValueChange={setSelectedCar}
                                                 >
                                                     <SelectTrigger className="w-full bg-stone-200">
-                                                        <span>{selectedBrandLabel || "Marca"}</span>
+                                                        <span>{selectedBrandLabel || "Selecione o carro"}</span>
                                                     </SelectTrigger>
 
                                                     <SelectContent className="bg-stone-200">
@@ -1611,7 +1647,7 @@ export default function AdminComponent() {
                                                                                 {car.name}
                                                                             </h3>
                                                                             <span className="text-stone-700 font-medium mt-1">
-                                                                                {car.fipe}
+                                                                                {formatMoney(car.fipe)}
                                                                             </span>
                                                                         </div>
                                                                     </div>
@@ -1747,43 +1783,43 @@ export default function AdminComponent() {
                                     </DialogTrigger>
                                     <DialogContent className="sm:max-w-[425px]">
                                         <DialogHeader>
-                                            <DialogTitle>Adicionar carro ao ranking</DialogTitle>
-                                            <DialogDescription>
-                                                Selecione o carro que você quer adicionar ao ranking
-                                            </DialogDescription>
+                                            <DialogTitle>Adicionar carroceria</DialogTitle>
+                                            <DialogDescription></DialogDescription>
                                         </DialogHeader>
 
-                                        <form action={handleCreateCarOnRank} className="space-y-4">
-                                            <div className="grid gap-4 py-4">
-                                                <Input
-                                                    value={brandData.brand_name}
-                                                    onChange={(e) => setBrandData({ ...brandData, brand_name: e.target.value })}
-                                                    placeholder="Nome da carroceria"
-                                                    type="text"
-                                                    required
-                                                    className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
-                                                />
+                                        <div className="grid gap-4 py-4">
+                                            <Input
+                                                value={brandData.brand_name}
+                                                onChange={(e) => setBrandData({ ...brandData, brand_name: e.target.value })}
+                                                placeholder="Nome da carroceria"
+                                                type="text"
+                                                required
+                                                className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
+                                            />
 
-                                                <Input
-                                                    value={brandData.img_url}
-                                                    onChange={(e) => setBrandData({ ...brandData, img_url: e.target.value })}
-                                                    placeholder="url da imagem da carroceria"
-                                                    type="text"
-                                                    required
-                                                    className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
-                                                />
-                                            </div>
+                                            <Input
+                                                value={brandData.img_url}
+                                                onChange={(e) => setBrandData({ ...brandData, img_url: e.target.value })}
+                                                placeholder="url da imagem da carroceria"
+                                                type="text"
+                                                required
+                                                className="border-zinc-300 focus-visible:ring-2 focus-visible:ring-orange-500"
+                                            />
+                                        </div>
 
-                                            <DialogFooter>
-                                                <Button
-                                                    disabled={loading}
-                                                    type="submit"
-                                                    className="w-full cursor-pointer bg-orange-600 hover:bg-orange-700 text-white"
-                                                >
-                                                    Criar
-                                                </Button>
-                                            </DialogFooter>
-                                        </form>
+                                        <DialogFooter>
+                                            <Button
+                                                disabled={loading}
+                                                type="button"
+                                                onClick={handleCreateBodywork}
+                                                className="w-full cursor-pointer bg-orange-600 hover:bg-orange-700 text-white"
+                                            >
+                                                Criar
+                                            </Button>
+                                            <DialogClose asChild>
+                                                <button ref={bodyworkRef} className="hidden"></button>
+                                            </DialogClose>
+                                        </DialogFooter>
                                     </DialogContent>
                                 </Dialog>
 
@@ -1804,9 +1840,9 @@ export default function AdminComponent() {
                                                 </DialogHeader>
 
                                                 <section className="w-full flex items-center gap-3">
-                                                    <Button disabled={loading} onClick={() => handleDeleteBrand(bodyworks.id)} className="cursor-pointer flex-1 bg-red-500/40 text-red-800 hover:bg-red-500/50 border border-red-500/70">Deletar</Button>
+                                                    <Button disabled={loading} onClick={() => handleDeleteBodywork(bodyworks.id)} className="cursor-pointer flex-1 bg-red-500/40 text-red-800 hover:bg-red-500/50 border border-red-500/70">Deletar</Button>
                                                     <DialogClose asChild>
-                                                        <Button ref={toggleDeleteBrandModal} variant={'secondary'} className="flex-1 cursor-pointer">Cancelar</Button>
+                                                        <Button ref={bodyworkRef} variant={'secondary'} className="flex-1 cursor-pointer">Cancelar</Button>
                                                     </DialogClose>
                                                 </section>
                                             </DialogContent>

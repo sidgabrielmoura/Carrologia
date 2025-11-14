@@ -9,6 +9,7 @@ import { useCarsStore } from "@/stores/cars"
 import { useSnapshot } from "valtio"
 import { useLayout } from "@/stores/layout"
 import { motion } from 'framer-motion'
+import { formatMoney } from "@/app/actions/utils"
 
 interface Car {
   id: number
@@ -212,7 +213,7 @@ export function CarGrid() {
                         <h3 className="text-xl font-bold text-foreground truncate">
                           {car.brand} {car.name}
                         </h3>
-                        <span className="text-lg font-semibold text-accent text-nowrap">R$ {car.fipe.toFixed(3)}</span>
+                        <span className="text-lg font-semibold text-accent text-nowrap">{formatMoney(car.fipe)}</span>
                       </div>
 
                       <div className="space-y-2 mb-4 text-sm text-muted-foreground">

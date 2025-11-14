@@ -338,7 +338,7 @@ export async function deleteBrands(id: string) {
         const response = await fetch('/api/brands/remove-brand', {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({id})
+            body: JSON.stringify({ id })
         })
 
         if (!response.ok) {
@@ -371,6 +371,50 @@ export async function getBodyworks() {
         useBodyworkStore.bodyworks = data
 
         return data
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+export async function createBodywork(body_data: { name: string, image_url: string }) {
+    try {
+        const response = await fetch('/api/bodywork/create-bodywork', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({...body_data})
+        })
+
+        if(!response.ok){
+            throw new Error('erro ao criar carroceria')
+        }
+
+        const data = await response.json()
+
+        await getBodyworks()
+        
+        return data;
+    } catch (error) {
+        console.log(error)
+    }
+}
+
+export async function deleteBodywork(id: string) {
+    try {
+        const response = await fetch('/api/bodywork/delete-bodywork', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({id})
+        })
+
+        if(!response.ok){
+            throw new Error('erro ao criar carroceria')
+        }
+
+        const data = await response.json()
+
+        await getBodyworks()
+
+        return data;
     } catch (error) {
         console.log(error)
     }

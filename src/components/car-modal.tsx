@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Prisma } from "@/generated/prisma"
 import { DialogHeader, DialogFooter, Dialog, DialogContent, DialogDescription, DialogTitle } from "./ui/dialog"
+import { formatMoney } from "@/app/actions/utils"
 
 type CarWithSpacificationsAndFeatures = Prisma.CarsGetPayload<{ include: { specifications: true, features: true } }>
 
@@ -48,7 +49,6 @@ export function CarModal({ car, onClose, open }: CarDialogProps) {
           </div>
         </DialogHeader>
 
-        {/* Content */}
         <div className="p-2">
           <div className="grid md:grid-cols-2 gap-8">
             <div className="space-y-4">
@@ -71,7 +71,7 @@ export function CarModal({ car, onClose, open }: CarDialogProps) {
                   )}
                 </div>
                 <span className="text-2xl font-bold text-accent">
-                  R$ {car.fipe.toFixed(3)}
+                  {formatMoney(car.fipe)}
                 </span>
               </div>
             </div>

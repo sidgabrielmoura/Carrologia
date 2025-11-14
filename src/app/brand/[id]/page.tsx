@@ -10,6 +10,7 @@ import { use, useMemo, useState } from "react";
 import { Link, SearchX, Video } from "lucide-react";
 import { CarModal } from "@/components/car-modal";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { formatMoney } from "@/app/actions/utils";
 
 export default function BrandCarsPage({ params }: { params: Promise<{ id: string }> }) {
     const [selectedCar, setSelectedCar] = useState<any | null>(null)
@@ -126,7 +127,7 @@ export default function BrandCarsPage({ params }: { params: Promise<{ id: string
                         </CardContent>
                         <CardFooter className="flex justify-between items-center pb-4">
                             <span className="font-semibold text-lg text-primary">
-                                R$ {car.fipe}
+                                {formatMoney(car.fipe)}
                             </span>
 
                             <Button
@@ -188,7 +189,7 @@ export default function BrandCarsPage({ params }: { params: Promise<{ id: string
                                             )}
                                         </div>
                                         <span className="text-2xl font-bold text-accent">
-                                            R$ {selectedCar.fipe.toFixed(3)}
+                                            {formatMoney(selectedCar.fipe)}
                                         </span>
                                     </div>
                                 </div>
